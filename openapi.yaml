@@ -7,6 +7,8 @@ info:
     API for accessing pharmacy locations, inventory,
     authentication, reservations, and payments.
 
+security: []
+
 servers:
   - url: http://localhost:5000/api
     description: Local development server
@@ -343,7 +345,8 @@ components:
         amount:
           type: number
           format: float
-          exclusiveMinimum: 0
+          minimum: 0
+          exclusiveMinimum: true
           example: 250
         status:
           type: string
