@@ -1,11 +1,51 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const AUTH_TOKEN_KEY = "pharmalink-auth-token";
+
+function getStoredToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setStoredToken(token) {
+  if (!token) {
+    try {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    } catch {
+      // ignore storage errors
+    }
+    return;
+  }
+
+  try {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function clearStoredToken() {
+  setStoredToken("");
+}
 
 async function request(path, options = {}) {
+  const token = getStoredToken();
+  const headers = new Headers({ "Content-Type": "application/json" });
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   let response;
   try {
     response = await fetch(`${API_URL}${path}`, {
-      headers: { "Content-Type": "application/json" },
-      ...options
+      ...options,
+      headers: {
+        ...Object.fromEntries(headers.entries()),
+        ...(options.headers || {})
+      }
     });
   } catch (networkError) {
     const error = new Error("Backend unreachable");
@@ -19,7 +59,7 @@ async function request(path, options = {}) {
       const body = await response.json();
       if (body?.message) message = body.message;
     } catch {
-      
+      // ignore non-JSON errors
     }
     const error = new Error(message);
     error.status = response.status;
@@ -29,8 +69,11 @@ async function request(path, options = {}) {
   return response.json();
 }
 
-export function searchStock(medicine, area) {
-  const query = new URLSearchParams({ medicine, area });
+export function searchStock(medicine, location) {
+  const query = new URLSearchParams({
+    medicine,
+    location: location || "Nairobi CBD"
+  });
   return request(`/stock/search?${query.toString()}`);
 }
 
@@ -45,6 +88,11 @@ export function registerPharmacy(payload) {
   return request("/auth/register", {
     method: "POST",
     body: JSON.stringify(payload)
+  }).then((data) => {
+    if (data?.token) {
+      setStoredToken(data.token);
+    }
+    return data;
   });
 }
 
@@ -52,6 +100,11 @@ export function loginPharmacy(payload) {
   return request("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload)
+  }).then((data) => {
+    if (data?.token) {
+      setStoredToken(data.token);
+    }
+    return data;
   });
 }
 

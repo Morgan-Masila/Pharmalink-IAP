@@ -26,6 +26,8 @@ DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=pharmalink
 PORT=5000
+JWT_SECRET=replace_with_a_secure_secret
+CORS_ORIGIN=http://localhost:5173
 
 Install and run:
 
@@ -39,6 +41,7 @@ Open a second terminal:
 
 cd frontend
 npm install
+cp .env.example .env
 npm run dev
 
 Then open the Vite URL shown in the terminal, usually:

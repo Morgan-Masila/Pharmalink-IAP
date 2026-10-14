@@ -1,29 +1,396 @@
-openapi: 3.0.0
+﻿openapi: 3.0.0
 
 info:
   version: "1.0.0"
   title: PharmaLink API
   description: >
     API for accessing pharmacy locations, inventory,
-    authentication, reservations, payments, and
-    buyer-reseller meet-up bookings.
+    authentication, reservations, and payments.
 
 servers:
   - url: http://localhost:5000/api
     description: Local development server
 
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: PharmaLink API
+
+    Pharmacy:
+      type: object
+      required:
+        - id
+        - name
+        - location
+        - verified
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: Test Pharmacy
+        location:
+          type: string
+          example: Westlands
+        distance:
+          type: number
+          nullable: true
+          example: 2.5
+        eta:
+          type: string
+          nullable: true
+          example: 10 minutes
+        verified:
+          type: boolean
+          example: true
+
+    InventoryItem:
+      type: object
+      required:
+        - id
+        - medicine
+        - quantity
+        - price
+        - status
+      properties:
+        id:
+          type: integer
+          example: 12
+        medicine:
+          type: string
+          example: Panadol
+        quantity:
+          type: integer
+          example: 20
+        price:
+          type: number
+          format: float
+          example: 250
+        status:
+          type: string
+          example: In stock
+
+    CreateInventoryRequest:
+      type: object
+      required:
+        - medicine
+        - quantity
+        - price
+      properties:
+        pharmacy_id:
+          type: integer
+          description: Optional. If provided it must match the logged-in pharmacy.
+          example: 3
+        medicine:
+          type: string
+          example: Panadol
+        quantity:
+          type: integer
+          minimum: 0
+          example: 20
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 250
+        status:
+          type: string
+          example: In stock
+
+    InventoryCreatedResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        pharmacy_id:
+          type: integer
+          example: 3
+        medicine:
+          type: string
+          example: Panadol
+        quantity:
+          type: integer
+          example: 20
+        price:
+          type: number
+          example: 250
+        status:
+          type: string
+          example: In stock
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-10-14T00:00:00.000Z"
+
+    UpdateInventoryRequest:
+      type: object
+      required:
+        - quantity
+        - price
+        - status
+      properties:
+        pharmacy_id:
+          type: integer
+          description: Optional. If provided it must match the logged-in pharmacy.
+          example: 3
+        quantity:
+          type: integer
+          minimum: 0
+          example: 15
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 220
+        status:
+          type: string
+          example: In stock
+
+    PharmacyStockSearchResult:
+      type: object
+      required:
+        - id
+        - pharmacy_id
+        - medicine
+        - name
+        - area
+        - location
+        - quantity
+        - price
+        - verified
+      properties:
+        id:
+          type: integer
+          description: Inventory item id (use as the id for PATCH /inventory/{id})
+          example: 12
+        pharmacy_id:
+          type: integer
+          example: 3
+        medicine:
+          type: string
+          example: Panadol
+        name:
+          type: string
+          example: Test Pharmacy
+        area:
+          type: string
+          example: Westlands
+        location:
+          type: string
+          example: Westlands
+        distance:
+          type: number
+          nullable: true
+          example: 2.5
+        eta:
+          type: string
+          nullable: true
+          example: 10 minutes
+        quantity:
+          type: integer
+          example: 20
+        price:
+          type: number
+          format: float
+          example: 250
+        verified:
+          type: boolean
+          example: true
+        latitude:
+          type: number
+          format: float
+          example: -1.2647
+        longitude:
+          type: number
+          format: float
+          example: 36.8030
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - area
+        - password
+      properties:
+        name:
+          type: string
+          example: Test Pharmacy
+        area:
+          type: string
+          example: Westlands
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "123456"
+
+    RegisterResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: Test Pharmacy
+        area:
+          type: string
+          example: Westlands
+        verified:
+          type: boolean
+          example: false
+
+    LoginRequest:
+      type: object
+      required:
+        - name
+        - password
+      properties:
+        name:
+          type: string
+          example: Test Pharmacy
+        password:
+          type: string
+          format: password
+          example: "123456"
+
+    LoginResponse:
+      type: object
+      required:
+        - id
+        - name
+        - area
+        - verified
+        - token
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: Test Pharmacy
+        area:
+          type: string
+          example: Westlands
+        verified:
+          type: boolean
+          example: true
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    ReservationRequest:
+      type: object
+      required:
+        - pharmacy_id
+        - medicine
+        - patient_initials
+        - pickup_window
+      properties:
+        pharmacy_id:
+          type: integer
+          example: 3
+        medicine:
+          type: string
+          example: Panadol
+        patient_initials:
+          type: string
+          example: MK
+        pickup_window:
+          type: string
+          example: "2:00 PM - 3:00 PM"
+
+    ReservationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        reservation_code:
+          type: string
+          example: RES-ABCD1234
+        status:
+          type: string
+          example: Reserved
+
+    PaymentRequest:
+      type: object
+      required:
+        - type
+        - amount
+      properties:
+        type:
+          type: string
+          example: M-Pesa
+        amount:
+          type: number
+          format: float
+          exclusiveMinimum: 0
+          example: 250
+        status:
+          type: string
+          example: Confirmed
+        reservation_id:
+          type: integer
+          nullable: true
+          example: 21
+
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        time:
+          type: string
+          example: "02:30 PM"
+        type:
+          type: string
+          example: M-Pesa
+        amount:
+          type: number
+          format: float
+          example: 250
+        reservation_id:
+          type: integer
+          nullable: true
+          example: 21
+        status:
+          type: string
+          example: Confirmed
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Server error
 
 paths:
-
-  # =========================================================
-  # HEALTH CHECK
-  # =========================================================
-
   /health:
     get:
       summary: Check API health
       description: Checks whether the PharmaLink API is running.
-
       responses:
         "200":
           description: API is running
@@ -31,30 +398,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
-
-
-  # =========================================================
-  # PHARMACIES
-  # =========================================================
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /pharmacies:
     get:
       summary: Get pharmacies
-      description: >
-        Returns pharmacy names and location/distance/ETA data.
-        The verified query parameter can be used to filter
-        pharmacies according to verification status.
-
+      description: Returns pharmacy names and location, distance, and ETA data.
       parameters:
         - name: verified
           in: query
-          description: Filter pharmacies by verification status
           required: false
           schema:
             type: boolean
-
+        - name: lat
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
+        - name: lng
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
       responses:
-
         "200":
           description: List of pharmacies
           content:
@@ -63,14 +436,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Pharmacy"
-
         "400":
-          description: Invalid verified parameter
+          description: Invalid verified or coordinate parameters
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "500":
           description: Server error
           content:
@@ -78,30 +449,18 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-
-  # =========================================================
-  # INVENTORY
-  # =========================================================
-
   /inventory:
-
     get:
       summary: Get pharmacy inventory
-      description: >
-        Returns medicines, quantities, and prices for
-        a specified pharmacy.
-
+      description: Returns the items for a specified pharmacy.
       parameters:
         - name: pharmacy_id
           in: query
-          description: ID of the pharmacy
           required: true
           schema:
             type: integer
             minimum: 1
-
       responses:
-
         "200":
           description: Inventory for the specified pharmacy
           content:
@@ -110,50 +469,60 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/InventoryItem"
-
         "400":
           description: Missing or invalid pharmacy_id
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "500":
           description: Server error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-
     post:
       summary: Add an inventory item
-      description: >
-        Adds a medicine to the inventory of a pharmacy.
-
+      description: Adds a medicine to the logged-in pharmacy inventory.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateInventoryRequest"
-
       responses:
-
         "201":
           description: Inventory item created successfully
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/InventoryCreatedResponse"
-
         "400":
           description: Missing or invalid input
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Pharmacy is not allowed to modify the given inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: This medicine is already in your inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -161,21 +530,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-
-  # =========================================================
-  # UPDATE INVENTORY
-  # =========================================================
-
   /inventory/{id}:
-
     patch:
       summary: Update an inventory item
-      description: >
-        Updates the quantity, price, and status of an
-        existing inventory item belonging to a pharmacy.
-
+      description: Updates the quantity, price, and status of a pharmacy inventory item.
+      security:
+        - bearerAuth: []
       parameters:
-
         - name: id
           in: path
           required: true
@@ -183,37 +544,43 @@ paths:
           schema:
             type: integer
             minimum: 1
-
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/UpdateInventoryRequest"
-
       responses:
-
         "200":
           description: Inventory item updated successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InventoryDatabaseItem"
-
+                $ref: "#/components/schemas/InventoryCreatedResponse"
         "400":
           description: Invalid or missing input
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-        "404":
-          description: Inventory item not found
+        "401":
+          description: Authentication required
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
+        "403":
+          description: Pharmacy is not allowed to modify the given inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Inventory item not found for this pharmacy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -221,37 +588,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-
-  # =========================================================
-  # STOCK SEARCH
-  # =========================================================
-
   /stock/search:
-
     get:
       summary: Search pharmacies that stock a medicine
-      description: >
-        Searches for pharmacies in a specified location
-        that currently have the requested medicine in stock.
-
+      description: Finds pharmacies in a location that currently have the requested medicine in stock.
       parameters:
-
         - name: medicine
           in: query
           required: true
-          description: Name of medicine to search for
           schema:
             type: string
-
         - name: location
           in: query
           required: true
-          description: Area to search
           schema:
             type: string
-
+        - name: lat
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
+        - name: lng
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
       responses:
-
         "200":
           description: Pharmacies stocking the medicine
           content:
@@ -260,14 +624,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PharmacyStockSearchResult"
-
         "400":
           description: Missing or invalid search parameters
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "500":
           description: Server error
           content:
@@ -275,49 +637,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-
-  # =========================================================
-  # REGISTER PHARMACY
-  # =========================================================
-
   /auth/register:
-
     post:
       summary: Register a pharmacy
-      description: >
-        Registers a new pharmacy using its name,
-        area, and password.
-
+      description: Registers a new pharmacy using its name, area, and password.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/RegisterRequest"
-
       responses:
-
         "201":
           description: Pharmacy registered successfully
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/RegisterResponse"
-
         "400":
           description: Invalid registration details
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "409":
           description: Pharmacy already registered
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
+        "429":
+          description: Too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -325,49 +679,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-
-  # =========================================================
-  # LOGIN
-  # =========================================================
-
   /auth/login:
-
     post:
       summary: Login pharmacy
-      description: >
-        Authenticates a pharmacy using its registered
-        name and password.
-
+      description: Authenticates a pharmacy using its registered name and password.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/LoginRequest"
-
       responses:
-
         "200":
           description: Login successful
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
-
         "400":
           description: Missing pharmacy name or password
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
         "401":
           description: Incorrect pharmacy name or password
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
+        "429":
+          description: Too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -375,34 +721,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-
-  # =========================================================
-  # RESERVATIONS
-  # =========================================================
-
   /reservations:
-
     post:
       summary: Create a reservation
-      description: >
-        Creates a medicine reservation at a pharmacy.
-
+      description: Creates a medicine reservation at a pharmacy.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/ReservationRequest"
-
       responses:
-
         "201":
           description: Reservation created successfully
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReservationResponse"
-
+        "400":
+          description: Invalid reservation details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Medicine not found at this pharmacy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Medicine is out of stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
@@ -410,521 +763,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-
-  # =========================================================
-  # PAYMENTS
-  # =========================================================
-
   /payments:
-
     post:
       summary: Create a payment
-      description: >
-        Records payment information for a PharmaLink transaction.
-
+      description: Records payment information for a PharmaLink transaction.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/PaymentRequest"
-
       responses:
-
         "201":
           description: Payment recorded successfully
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaymentResponse"
-
+        "400":
+          description: Invalid payment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-
-# ===========================================================
-# COMPONENTS
-# ===========================================================
-
-components:
-
-  schemas:
-
-    # -------------------------------------------------------
-    # HEALTH
-    # -------------------------------------------------------
-
-    HealthResponse:
-      type: object
-      required:
-        - status
-        - service
-
-      properties:
-
-        status:
-          type: string
-          example: ok
-
-        service:
-          type: string
-          example: PharmaLink API
-
-
-    # -------------------------------------------------------
-    # PHARMACY
-    # -------------------------------------------------------
-
-    Pharmacy:
-      type: object
-
-      required:
-        - name
-        - location
-        - distance
-        - eta
-        - verified
-
-      properties:
-
-        name:
-          type: string
-          example: Test Pharmacy
-
-        location:
-          type: string
-          example: Westlands
-
-        distance:
-          type: number
-          format: float
-          example: 2.5
-
-        eta:
-          type: string
-          example: 10 minutes
-
-        verified:
-          type: boolean
-          example: true
-
-
-    # -------------------------------------------------------
-    # INVENTORY GET RESPONSE
-    # -------------------------------------------------------
-
-    InventoryItem:
-      type: object
-
-      required:
-        - medicine
-        - quantity
-        - price
-
-      properties:
-
-        medicine:
-          type: string
-          example: Panadol
-
-        quantity:
-          type: integer
-          example: 20
-
-        price:
-          type: number
-          format: float
-          example: 250
-
-
-    # -------------------------------------------------------
-    # CREATE INVENTORY
-    # -------------------------------------------------------
-
-    CreateInventoryRequest:
-      type: object
-
-      required:
-        - pharmacy_id
-        - medicine
-        - quantity
-        - price
-
-      properties:
-
-        pharmacy_id:
-          type: integer
-          example: 3
-
-        medicine:
-          type: string
-          example: Panadol
-
-        quantity:
-          type: integer
-          minimum: 0
-          example: 20
-
-        price:
-          type: number
-          format: float
-          minimum: 0
-          example: 250
-
-        status:
-          type: string
-          example: In stock
-
-
-    InventoryCreatedResponse:
-      type: object
-
-      properties:
-
-        id:
-          type: integer
-          example: 1
-
-        pharmacy_id:
-          type: integer
-          example: 3
-
-        medicine:
-          type: string
-          example: Panadol
-
-        quantity:
-          type: integer
-          example: 20
-
-        price:
-          type: number
-          example: 250
-
-        status:
-          type: string
-          example: In stock
-
-        updated_at:
-          type: string
-          example: Just now
-
-
-    # -------------------------------------------------------
-    # UPDATE INVENTORY
-    # -------------------------------------------------------
-
-    UpdateInventoryRequest:
-      type: object
-
-      required:
-        - pharmacy_id
-        - quantity
-        - price
-        - status
-
-      properties:
-
-        pharmacy_id:
-          type: integer
-          example: 3
-
-        quantity:
-          type: integer
-          minimum: 0
-          example: 15
-
-        price:
-          type: number
-          format: float
-          minimum: 0
-          example: 220
-
-        status:
-          type: string
-          example: In stock
-
-
-    InventoryDatabaseItem:
-      type: object
-
-      properties:
-
-        id:
-          type: integer
-
-        pharmacy_id:
-          type: integer
-
-        medicine:
-          type: string
-
-        quantity:
-          type: integer
-
-        price:
-          type: number
-          format: float
-
-        status:
-          type: string
-
-        updated_at:
-          type: string
-          format: date-time
-
-
-    # -------------------------------------------------------
-    # STOCK SEARCH
-    # -------------------------------------------------------
-
-    PharmacyStockSearchResult:
-      type: object
-
-      required:
-        - pharmacy_id
-        - name
-        - location
-        - distance
-
-      properties:
-
-        pharmacy_id:
-          type: string
-          example: "3"
-
-        name:
-          type: string
-          example: Test Pharmacy
-
-        location:
-          type: string
-          example: Westlands
-
-        distance:
-          type: number
-          format: float
-          example: 2.5
-
-
-    # -------------------------------------------------------
-    # REGISTER
-    # -------------------------------------------------------
-
-    RegisterRequest:
-      type: object
-
-      required:
-        - name
-        - area
-        - password
-
-      properties:
-
-        name:
-          type: string
-          example: Test Pharmacy
-
-        area:
-          type: string
-          example: Westlands
-
-        password:
-          type: string
-          format: password
-          minLength: 6
-          example: "123456"
-
-
-    RegisterResponse:
-      type: object
-
-      properties:
-
-        id:
-          type: integer
-          example: 3
-
-        name:
-          type: string
-          example: Test Pharmacy
-
-        area:
-          type: string
-          example: Westlands
-
-        verified:
-          type: boolean
-          example: false
-
-
-    # -------------------------------------------------------
-    # LOGIN
-    # -------------------------------------------------------
-
-    LoginRequest:
-      type: object
-
-      required:
-        - name
-        - password
-
-      properties:
-
-        name:
-          type: string
-          example: Test Pharmacy
-
-        password:
-          type: string
-          format: password
-          example: "123456"
-
-
-    LoginResponse:
-      type: object
-
-      properties:
-
-        id:
-          type: integer
-
-        name:
-          type: string
-
-        area:
-          type: string
-
-        verified:
-          type: boolean
-
-
-    # -------------------------------------------------------
-    # RESERVATION
-    # -------------------------------------------------------
-
-    ReservationRequest:
-      type: object
-
-      required:
-        - pharmacy_id
-        - medicine
-        - patient_initials
-        - pickup_window
-        - reservation_code
-
-      properties:
-
-        pharmacy_id:
-          type: integer
-          example: 3
-
-        medicine:
-          type: string
-          example: Panadol
-
-        patient_initials:
-          type: string
-          example: MK
-
-        pickup_window:
-          type: string
-          example: 2:00 PM - 3:00 PM
-
-        reservation_code:
-          type: string
-          example: RES-001
-
-
-    ReservationResponse:
-      type: object
-
-      properties:
-
-        id:
-          type: integer
-          example: 1
-
-        reservation_code:
-          type: string
-          example: RES-001
-
-        status:
-          type: string
-          example: Reserved
-
-
-    # -------------------------------------------------------
-    # PAYMENT
-    # -------------------------------------------------------
-
-    PaymentRequest:
-      type: object
-
-      required:
-        - type
-        - amount
-
-      properties:
-
-        type:
-          type: string
-          example: M-Pesa
-
-        amount:
-          type: number
-          format: float
-          example: 250
-
-        status:
-          type: string
-          example: Confirmed
-
-
-    PaymentResponse:
-      type: object
-
-      properties:
-
-        id:
-          type: integer
-          example: 1
-
-        time:
-          type: string
-          example: 02:30 PM
-
-        type:
-          type: string
-          example: M-Pesa
-
-        amount:
-          type: number
-          format: float
-          example: 250
-
-        status:
-          type: string
-          example: Confirmed
-
-
-    # -------------------------------------------------------
-    # ERROR
-    # -------------------------------------------------------
-
-    ErrorResponse:
-      type: object
-
-      properties:
-
-        message:
-          type: string
-          example: Server error
-
-        error:
-          type: string
-          example: Invalid request

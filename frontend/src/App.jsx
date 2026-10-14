@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   addInventoryItem,
+  clearStoredToken,
   createPayment,
   createReservation,
   getInventory,
@@ -317,6 +318,7 @@ export default function App() {
   */
 
   function handleLogout() {
+    clearStoredToken();
     setActivePharmacy(null);
     setInventory([]);
     setEditingId(null);
@@ -506,8 +508,7 @@ export default function App() {
       patient_initials:
         patientInitials.trim().toUpperCase() ||
         "ANON",
-      pickup_window: pickupWindow,
-      reservation_code: code
+      pickup_window: pickupWindow
     };
 
     try {
