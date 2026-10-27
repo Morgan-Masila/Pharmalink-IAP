@@ -5,6 +5,7 @@ import {
   createPayment,
   createReservation,
   getInventory,
+  getApprovedPatients,
   loginPharmacy,
   registerPharmacy,
   searchStock,
@@ -80,6 +81,10 @@ export default function App() {
   // Inventory
   const [inventory, setInventory] = useState([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [approvedPatients, setApprovedPatients] = useState([]);
+  const [patientsLoading, setPatientsLoading] = useState(false);
+  const [patientsError, setPatientsError] = useState("");
+  const [patientsRefresh, setPatientsRefresh] = useState(0);
 
   const [editingId, setEditingId] = useState(null);
 
@@ -102,6 +107,24 @@ export default function App() {
 
   // Notifications
   const [toast, setToast] = useState("");
+
+  useEffect(() => {
+    if (!activePharmacy) {
+      setApprovedPatients([]);
+      setPatientsError("");
+      setPatientsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setApprovedPatients([]);
+    setPatientsLoading(true);
+    setPatientsError("");
+    getApprovedPatients()
+      .then((patients) => { if (!cancelled) setApprovedPatients(patients); })
+      .catch((error) => { if (!cancelled) setPatientsError(error.message || "Could not load patients."); })
+      .finally(() => { if (!cancelled) setPatientsLoading(false); });
+    return () => { cancelled = true; };
+  }, [activePharmacy, patientsRefresh]);
 
   /*
   ============================================================
@@ -300,7 +323,7 @@ export default function App() {
         password: ""
       });
     } catch (error) {
-      console.error("Authentication failed:", error);
+      if (error.status !== 409 && error.status !== 401) console.error("Authentication failed:", error);
 
       setAuthError(
         error.message ||
@@ -1143,6 +1166,28 @@ export default function App() {
               </button>
 
             </div>
+
+            <div className="toolbar">
+              <div>
+                <h3>Approved patients</h3>
+                <p className="tiny">Patients received from the partner service.</p>
+              </div>
+              <button className="ghost-btn" onClick={() => setPatientsRefresh((value) => value + 1)} disabled={patientsLoading}>
+                Refresh patients
+              </button>
+            </div>
+            {patientsLoading ? <p>Loading approved patients...</p> : patientsError ? (
+              <p role="alert">Could not load approved patients: {patientsError}</p>
+            ) : approvedPatients.length === 0 ? <p>No approved patients found.</p> : (
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Patient ID</th><th>Name</th><th>Phone number</th></tr></thead>
+                  <tbody>{approvedPatients.map((patient) => (
+                    <tr key={patient.patient_id}><td>{patient.patient_id}</td><td>{patient.name}</td><td>{patient.phone_number || "Not available"}</td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )}
 
             <div className="table-wrap">
 

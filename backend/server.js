@@ -6,6 +6,8 @@ import rateLimit from "express-rate-limit";
 import jwt from "jsonwebtoken";
 import mysql from "mysql2/promise";
 import { randomInt } from "node:crypto";
+import { pathToFileURL } from "node:url";
+import { getApprovedPatients, ProducerError } from "./producer-patients.js";
 
 dotenv.config();
 
@@ -241,6 +243,19 @@ app.get("/api/health", (req, res) => {
     status: "ok",
     service: "PharmaLink API"
   });
+});
+
+// Patient contact details are available only to signed-in pharmacies.
+app.get("/api/approved-patients", requireAuth, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    return res.json(await getApprovedPatients());
+  } catch (error) {
+    if (error instanceof ProducerError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    return res.status(502).json({ message: "Patient service unavailable" });
+  }
 });
 
 /* =========================================================
@@ -490,7 +505,7 @@ app.post("/api/auth/register", async (req, res, next) => {
 
     if (existing.length > 0) {
       return res.status(409).json({
-        message: "A pharmacy with that name is already registered"
+        message: "A pharmacy with that name is already registered. Please log in instead."
       });
     }
 
@@ -517,9 +532,13 @@ app.post("/api/auth/register", async (req, res, next) => {
       id: result.insertId,
       name,
       area,
-      verified: false
+      verified: false,
+      token: jwt.sign({ id: result.insertId }, process.env.JWT_SECRET, { expiresIn: "8h" })
     });
   } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ message: "A pharmacy with that name is already registered. Please log in instead." });
+    }
     next(error);
   }
 });
@@ -1019,6 +1038,12 @@ app.use((error, req, res, next) => {
    START SERVER
 ========================================================= */
 
-app.listen(port, () => {
-  console.log(`PharmaLink API running on http://localhost:${port}`);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  app.listen(port, () => {
+    console.log(`PharmaLink API running on http://localhost:${port}`);
+  });
+}
+
+export default app;
+export { pool };
+

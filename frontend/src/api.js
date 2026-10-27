@@ -117,6 +117,10 @@ export function getInventory(pharmacyId) {
   return request(`/inventory${query}`);
 }
 
+export function getApprovedPatients() {
+  return request("/approved-patients");
+}
+
 export function addInventoryItem(payload) {
   return request("/inventory", {
     method: "POST",
