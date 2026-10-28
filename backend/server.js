@@ -5,7 +5,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import jwt from "jsonwebtoken";
 import mysql from "mysql2/promise";
-import { randomInt } from "node:crypto";
+import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { getApprovedPatients, ProducerError } from "./producer-patients.js";
 
@@ -23,6 +23,59 @@ if (!process.env.JWT_SECRET) {
 }
 
 /* =========================================================
+   API KEYS: one per consumer, format  name:key
+========================================================= */
+
+const sha256 = (value) => createHash("sha256").update(value).digest();
+
+const CONSUMERS = (process.env.API_KEYS || "")
+  .split(",")
+  .map((entry) => entry.trim())
+  .filter(Boolean)
+  .map((entry) => {
+    const separator = entry.indexOf(":");
+    const name = entry.slice(0, separator);
+    const key = entry.slice(separator + 1);
+    if (separator < 1 || key.length < 16) {
+      console.error(
+        "API_KEYS entries must look like name:key, with a key of at least 16 characters"
+      );
+      process.exit(1);
+    }
+    return { name, digest: sha256(key) };
+  });
+
+if (CONSUMERS.length === 0) {
+  console.error("API_KEYS is not set. Add at least one name:key pair to your .env file");
+  process.exit(1);
+}
+
+// Log a COUNT only. Never log keys.
+console.log(`Loaded ${CONSUMERS.length} API key(s)`);
+
+function requireApiKey(req, res, next) {
+  const path = req.path.replace(/\/+$/, "");
+
+  // OPTIONS = browser CORS preflight (cannot carry custom headers; cors() answers it).
+  // /api/health stays public: it returns no data and uptime monitors cannot hold keys.
+  if (req.method === "OPTIONS" || path === "/api/health") return next();
+
+  const provided = req.get("X-API-Key");
+  if (provided) {
+    const digest = sha256(provided);
+    const match = CONSUMERS.find((consumer) =>
+      timingSafeEqual(consumer.digest, digest)
+    );
+    if (match) {
+      req.apiConsumer = match.name;
+      return next();
+    }
+  }
+
+  return res.status(401).json({ message: "Missing or invalid API key" });
+}
+
+/* =========================================================
    MIDDLEWARE
 ========================================================= */
 
@@ -31,6 +84,7 @@ app.use(
     origin: process.env.CORS_ORIGIN || "http://localhost:5173"
   })
 );
+app.use(requireApiKey);
 app.use(express.json({ limit: "10kb" }));
 
 /* =========================================================
@@ -1045,6 +1099,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
 }
 
+export { app, pool };
 export default app;
-export { pool };
 

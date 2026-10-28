@@ -1,5 +1,10 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+﻿const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+const API_KEY = import.meta.env.VITE_API_KEY;
 const AUTH_TOKEN_KEY = "pharmalink-auth-token";
+
+if (!API_KEY) {
+  console.warn("VITE_API_KEY is not set: API calls will be rejected with 401");
+}
 
 function getStoredToken() {
   try {
@@ -32,7 +37,10 @@ export function clearStoredToken() {
 
 async function request(path, options = {}) {
   const token = getStoredToken();
-  const headers = new Headers({ "Content-Type": "application/json" });
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    ...(API_KEY ? { "X-API-Key": API_KEY } : {})
+  });
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);

@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import request from 'supertest';
+import request from './__tests__/helpers/request.js';
 import jwt from 'jsonwebtoken';
 process.env.JWT_SECRET = 'test-secret';
+process.env.API_KEYS = 'jest:jest-test-key-0123456789abcdef';
 const { default: app } = await import('./server.js');
 const token = jwt.sign({id: 1}, process.env.JWT_SECRET);
 test('authentication and producer mapping', async () => {
