@@ -24,3 +24,17 @@ test("times out an upstream request", async () => {
   const fetchImpl = (_, { signal }) => new Promise((resolve, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
   await assert.rejects(getApprovedPatients({ fetchImpl, timeoutMs: 5 }), { status: 504 });
 });
+
+test("sends configured API key only to producer", async () => {
+  const result = await getApprovedPatients({ apiKey: "example-secret", fetchImpl: async (_url, options) => {
+    assert.equal(options.headers["x-api-key"], "example-secret");
+    return response([]);
+  }});
+  assert.deepEqual(result, []);
+});
+test("supports bearer authorization when configured", async () => {
+  await getApprovedPatients({ apiKey: "example-secret", apiKeyHeader: "authorization", fetchImpl: async (_url, options) => {
+    assert.equal(options.headers.authorization, "Bearer example-secret");
+    return response([]);
+  }});
+});

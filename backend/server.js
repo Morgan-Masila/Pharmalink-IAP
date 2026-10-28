@@ -12,7 +12,7 @@ import { getApprovedPatients, ProducerError } from "./producer-patients.js";
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 const AVERAGE_SPEED_KMH = 20;
 
 if (!process.env.JWT_SECRET) {
@@ -39,6 +39,7 @@ app.use(express.json({ limit: "10kb" }));
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
+  port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "pharmalink",

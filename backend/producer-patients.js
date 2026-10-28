@@ -7,14 +7,19 @@ export class ProducerError extends Error {
   }
 }
 
-export async function getApprovedPatients({ fetchImpl = fetch, url = process.env.PRODUCER_PATIENTS_URL || DEFAULT_URL, timeoutMs = 10000 } = {}) {
+export async function getApprovedPatients({ fetchImpl = fetch, url = process.env.PRODUCER_PATIENTS_URL || DEFAULT_URL, timeoutMs = 10000, apiKey = process.env.PRODUCER_API_KEY, apiKeyHeader = process.env.PRODUCER_API_KEY_HEADER || "x-api-key" } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const target = new URL(url);
     if (!["https:", "http:"].includes(target.protocol)) throw new Error("Invalid producer URL");
     target.searchParams.set("match_status", "APPROVED");
-    const response = await fetchImpl(target, { signal: controller.signal, redirect: "error", headers: { Accept: "application/json" } });
+    const headers = { Accept: "application/json" };
+    if (apiKey) {
+      if (!/^(x-api-key|authorization)$/i.test(apiKeyHeader)) throw new ProducerError(500, "Invalid producer API key header configuration");
+      headers[apiKeyHeader] = apiKeyHeader.toLowerCase() === "authorization" ? `Bearer ${apiKey}` : apiKey;
+    }
+    const response = await fetchImpl(target, { signal: controller.signal, redirect: "error", headers });
     let body;
     try { body = await response.json(); } catch { throw new ProducerError(502, "Invalid response from patient service"); }
     // The producer uses this particular 404 response for an empty result.
